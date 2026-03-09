@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bhuvan Ganesh — Video Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #050407;
+    --deep: #0a0810;
+    --purple-dark: #1a0a2e;
+    --purple-mid: #2d1054;
+    --purple: #6b21a8;
+    --purple-bright: #9333ea;
+    --purple-glow: #c084fc;
+    --white: #f8f4ff;
+    --white-dim: rgba(248,244,255,0.55);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--black); color: var(--white); font-family: 'Cormorant Garamond', serif; overflow-x: hidden; cursor: none; }
+
+  /* CURSOR */
+  .cursor { position: fixed; width: 12px; height: 12px; background: var(--purple-bright); border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%,-50%); transition: transform 0.1s ease; mix-blend-mode: screen; }
+  .cursor-ring { position: fixed; width: 38px; height: 38px; border: 1.5px solid var(--purple-glow); border-radius: 50%; pointer-events: none; z-index: 9998; transform: translate(-50%,-50%); transition: width 0.2s, height 0.2s, opacity 0.2s; opacity: 0.5; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 1000; opacity: 0.35; }
+
+  /* NAV */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 500; display: flex; align-items: center; justify-content: space-between; padding: 1.6rem 4rem; background: linear-gradient(to bottom, rgba(5,4,7,0.95) 0%, transparent 100%); backdrop-filter: blur(2px); }
+  .nav-logo { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.12em; background: linear-gradient(135deg, var(--white) 0%, var(--purple-glow) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .nav-links { display: flex; gap: 2.8rem; list-style: none; align-items: center; }
+  .nav-links a { font-family: 'Space Mono', monospace; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--white-dim); text-decoration: none; transition: color 0.25s; position: relative; }
+  .nav-links a::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 1px; background: var(--purple-bright); transition: width 0.3s; }
+  .nav-links a:hover { color: var(--white); }
+  .nav-links a:hover::after { width: 100%; }
+  .admin-nav-btn { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase; background: transparent; border: 1px solid rgba(107,33,168,0.4); color: rgba(192,132,252,0.5); padding: 0.4rem 1rem; cursor: none; transition: all 0.3s; }
+  .admin-nav-btn:hover { border-color: var(--purple-bright); color: var(--purple-glow); }
+
+  /* HERO */
+  .hero { min-height: 100vh; display: flex; align-items: center; position: relative; overflow: hidden; padding: 0 4rem; }
+  .hero-bg { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 60% 40%, rgba(107,33,168,0.28) 0%, transparent 65%), radial-gradient(ellipse 40% 50% at 80% 80%, rgba(147,51,234,0.15) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 10% 20%, rgba(45,16,84,0.4) 0%, transparent 70%), var(--black); }
+  .hero-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(107,33,168,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(107,33,168,0.07) 1px, transparent 1px); background-size: 60px 60px; mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 0%, transparent 100%); transition: transform 0.3s ease; }
+  .hero-content { position: relative; z-index: 2; max-width: 900px; }
+  .hero-eyebrow { font-family: 'Space Mono', monospace; font-size: 0.7rem; letter-spacing: 0.35em; color: var(--purple-glow); text-transform: uppercase; margin-bottom: 1.4rem; display: flex; align-items: center; gap: 1rem; animation: slideIn 0.9s ease 0.2s both; }
+  .hero-eyebrow::before { content: ''; display: block; width: 40px; height: 1px; background: var(--purple-bright); }
+  .hero-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(4rem, 11vw, 10rem); line-height: 0.9; letter-spacing: 0.02em; margin-bottom: 1.8rem; }
+  .hero-title .line1 { display: block; color: var(--white); animation: slideIn 0.9s ease 0.35s both; }
+  .hero-title .line2 { display: block; background: linear-gradient(90deg, var(--purple-bright) 0%, var(--purple-glow) 50%, var(--white) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 40px rgba(147,51,234,0.5)); animation: slideIn 0.9s ease 0.5s both; }
+  .hero-sub { font-size: 1.35rem; font-weight: 300; font-style: italic; color: var(--white-dim); max-width: 520px; line-height: 1.7; margin-bottom: 3rem; animation: slideIn 0.9s ease 0.65s both; }
+  .hero-ctas { display: flex; gap: 1.4rem; align-items: center; animation: slideIn 0.9s ease 0.8s both; }
+  .btn-primary { font-family: 'Space Mono', monospace; font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--black); background: var(--purple-bright); padding: 1rem 2.4rem; border: none; text-decoration: none; clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%); transition: background 0.25s, box-shadow 0.25s; box-shadow: 0 0 30px rgba(147,51,234,0.45); display: inline-block; }
+  .btn-primary:hover { background: var(--purple-glow); box-shadow: 0 0 50px rgba(192,132,252,0.6); }
+  .btn-ghost { font-family: 'Space Mono', monospace; font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--white-dim); background: transparent; padding: 1rem 2.4rem; border: 1px solid rgba(107,33,168,0.5); text-decoration: none; transition: color 0.25s, border-color 0.25s; display: inline-block; }
+  .btn-ghost:hover { color: var(--white); border-color: var(--purple-bright); }
+  .scroll-hint { position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.5rem; font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.3em; color: var(--white-dim); z-index: 2; animation: bounce 2.4s ease-in-out infinite; }
+  .scroll-hint::after { content: ''; width: 1px; height: 40px; background: linear-gradient(to bottom, var(--purple-bright), transparent); }
+  @keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
+  @keyframes slideIn { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+
+  /* SHARED */
+  .section-label { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.4em; text-transform: uppercase; color: var(--purple-glow); margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.8rem; }
+  .section-label span { width: 28px; height: 1px; background: var(--purple-bright); display: block; }
+  .section-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3rem, 6vw, 5.5rem); letter-spacing: 0.04em; line-height: 1; color: var(--white); }
+  .fade-up { opacity: 0; transform: translateY(40px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+  /* WORK */
+  #work { padding: 10rem 4rem; background: var(--deep); }
+  .work-header { margin-bottom: 5rem; }
+  .video-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: rgba(107,33,168,0.2); }
+  .video-card { position: relative; aspect-ratio: 16/9; background: var(--purple-dark); overflow: hidden; cursor: none; }
+  .video-card.featured { grid-column: span 2; grid-row: span 2; }
+  .video-card video { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.5s ease; }
+  .video-card:hover video { transform: scale(1.04); }
+  .video-card iframe {
+    position: absolute; top: 50%; left: 50%;
+    width: 177.78%; height: 177.78%;
+    transform: translate(-50%, -50%);
+    pointer-events: none; border: none;
+  }
+  .video-card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(5,4,7,0.9) 0%, rgba(5,4,7,0.2) 50%, transparent 100%); opacity: 0; transition: opacity 0.35s; display: flex; flex-direction: column; justify-content: flex-end; padding: 1.8rem; }
+  .video-card:hover .video-card-overlay { opacity: 1; }
+  .video-card-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 0.08em; color: var(--white); transform: translateY(10px); transition: transform 0.3s; }
+  .video-card:hover .video-card-title { transform: translateY(0); }
+  .video-card-tag { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.25em; color: var(--purple-glow); text-transform: uppercase; margin-bottom: 0.4rem; }
+  .play-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 60px; height: 60px; border-radius: 50%; background: rgba(147,51,234,0.7); border: 2px solid var(--purple-glow); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s, transform 0.3s; backdrop-filter: blur(8px); }
+  .play-btn svg { width: 22px; height: 22px; fill: white; margin-left: 3px; }
+  .video-card:hover .play-btn { opacity: 1; transform: translate(-50%,-50%) scale(1.1); }
+  .video-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, var(--purple-dark) 0%, #0f0820 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; transition: background 0.3s; }
+  .video-card:hover .video-placeholder { background: linear-gradient(135deg, #2d1054 0%, #1a0a2e 100%); }
+  .video-placeholder .icon { font-size: 2.5rem; opacity: 0.2; }
+  .video-placeholder span { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.2em; color: rgba(147,51,234,0.35); text-transform: uppercase; }
+
+  /* PUBLIC — no upload zone shown by default */
+  #upload-zone { display: none; margin-top: 2rem; border: 2px dashed rgba(107,33,168,0.4); padding: 3rem; text-align: center; transition: border-color 0.3s, background 0.3s; background: rgba(107,33,168,0.03); }
+  #upload-zone.active { display: block; }
+  #upload-zone:hover, #upload-zone.drag-over { border-color: var(--purple-bright); background: rgba(107,33,168,0.09); }
+  #upload-zone .upload-icon { font-size: 2rem; margin-bottom: 1rem; color: var(--purple-glow); }
+  #upload-zone p { font-family: 'Space Mono', monospace; font-size: 0.68rem; letter-spacing: 0.2em; color: var(--white-dim); text-transform: uppercase; }
+  #upload-zone p strong { color: var(--purple-bright); }
+  #file-input { display: none; }
+  .upload-label { cursor: none; display: block; }
+
+  /* ABOUT */
+  #about { padding: 10rem 4rem; background: linear-gradient(to bottom, var(--black), var(--deep)); }
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8rem; align-items: center; }
+  .about-visual { position: relative; aspect-ratio: 3/4; max-width: 400px; }
+  .about-visual-inner { width: 100%; height: 100%; background: linear-gradient(135deg, var(--purple-dark), var(--purple-mid)); border: 1px solid rgba(147,51,234,0.3); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .about-visual-inner::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 30% 30%, rgba(147,51,234,0.3) 0%, transparent 60%); }
+  .about-visual::after { content: ''; position: absolute; top: 16px; left: 16px; right: -16px; bottom: -16px; border: 1px solid rgba(107,33,168,0.25); z-index: -1; }
+  .about-text .section-title { margin-bottom: 2rem; }
+  .about-text p { font-size: 1.2rem; line-height: 1.9; color: var(--white-dim); font-weight: 300; margin-bottom: 1.5rem; }
+  .stats-row { display: flex; gap: 3rem; margin-top: 3rem; }
+  .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 3.2rem; background: linear-gradient(135deg, var(--purple-bright), var(--purple-glow)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .stat-label { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.2em; color: var(--white-dim); text-transform: uppercase; }
+
+  /* SERVICES */
+  #services { padding: 10rem 4rem; background: linear-gradient(to bottom, var(--deep), var(--black)); }
+  .services-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: rgba(107,33,168,0.2); margin-top: 5rem; }
+  .service-card { background: var(--black); padding: 3rem 2.5rem; position: relative; overflow: hidden; transition: background 0.3s; }
+  .service-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--purple-bright), transparent); transform: scaleX(0); transition: transform 0.4s; }
+  .service-card:hover { background: rgba(26,10,46,0.8); }
+  .service-card:hover::before { transform: scaleX(1); }
+  .service-num { font-family: 'Bebas Neue', sans-serif; font-size: 5rem; color: rgba(107,33,168,0.15); line-height: 1; margin-bottom: 0.5rem; }
+  .service-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.06em; color: var(--white); margin-bottom: 1rem; }
+  .service-desc { font-size: 1rem; line-height: 1.8; color: var(--white-dim); font-weight: 300; }
+
+  /* CONTACT */
+  #contact { padding: 10rem 4rem; background: var(--black); text-align: center; }
+  .contact-inner { max-width: 700px; margin: 0 auto; }
+  .contact-inner .section-title { font-size: clamp(4rem, 8vw, 7rem); margin: 1rem 0 2rem; }
+  .contact-inner > p { font-size: 1.25rem; font-style: italic; font-weight: 300; color: var(--white-dim); margin-bottom: 3rem; line-height: 1.7; }
+  .contact-details { display: flex; flex-direction: column; gap: 1.2rem; margin-bottom: 3rem; }
+  .contact-link { font-family: 'Bebas Neue', sans-serif; font-size: clamp(1.4rem, 3vw, 2.2rem); letter-spacing: 0.06em; background: linear-gradient(90deg, var(--purple-bright), var(--purple-glow)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-decoration: none; display: block; transition: filter 0.3s; }
+  .contact-link:hover { filter: brightness(1.25); }
+  .social-links { display: flex; gap: 2rem; justify-content: center; margin-top: 1rem; }
+  .social-link { font-family: 'Space Mono', monospace; font-size: 0.68rem; letter-spacing: 0.2em; color: var(--white-dim); text-decoration: none; text-transform: uppercase; transition: color 0.25s; position: relative; }
+  .social-link::after { content: ''; position: absolute; bottom: -3px; left: 0; width: 0; height: 1px; background: var(--purple-bright); transition: width 0.3s; }
+  .social-link:hover { color: var(--white); }
+  .social-link:hover::after { width: 100%; }
+
+  /* FOOTER */
+  footer { border-top: 1px solid rgba(107,33,168,0.2); padding: 2rem 4rem; display: flex; justify-content: space-between; align-items: center; background: var(--black); }
+  footer span { font-family: 'Space Mono', monospace; font-size: 0.62rem; letter-spacing: 0.2em; color: rgba(248,244,255,0.25); text-transform: uppercase; }
+  .footer-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple-bright); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
+
+  /* ════════════════════════════════
+     ADMIN LOGIN MODAL
+  ════════════════════════════════ */
+  #admin-modal {
+    display: none; position: fixed; inset: 0; z-index: 8000;
+    background: rgba(5,4,7,0.92); backdrop-filter: blur(12px);
+    align-items: center; justify-content: center;
+  }
+  #admin-modal.open { display: flex; }
+  .modal-box {
+    background: var(--deep); border: 1px solid rgba(107,33,168,0.5);
+    padding: 3rem 3.5rem; max-width: 420px; width: 90%;
+    position: relative;
+    box-shadow: 0 0 80px rgba(107,33,168,0.25);
+  }
+  .modal-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--purple-bright), transparent); }
+  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.4rem; letter-spacing: 0.1em; color: var(--white); margin-bottom: 0.4rem; }
+  .modal-sub { font-family: 'Space Mono', monospace; font-size: 0.62rem; letter-spacing: 0.2em; color: var(--white-dim); text-transform: uppercase; margin-bottom: 2rem; }
+  .modal-field { margin-bottom: 1.4rem; }
+  .modal-field label { font-family: 'Space Mono', monospace; font-size: 0.62rem; letter-spacing: 0.2em; color: var(--purple-glow); text-transform: uppercase; display: block; margin-bottom: 0.5rem; }
+  .modal-field input { width: 100%; background: rgba(107,33,168,0.08); border: 1px solid rgba(107,33,168,0.35); color: var(--white); font-family: 'Space Mono', monospace; font-size: 0.85rem; padding: 0.8rem 1rem; outline: none; transition: border-color 0.25s; cursor: text; }
+  .modal-field input:focus { border-color: var(--purple-bright); }
+  .modal-error { font-family: 'Space Mono', monospace; font-size: 0.62rem; letter-spacing: 0.15em; color: #f87171; text-transform: uppercase; margin-bottom: 1rem; display: none; }
+  .modal-error.show { display: block; }
+  .modal-btn { width: 100%; background: var(--purple-bright); color: var(--black); font-family: 'Space Mono', monospace; font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; border: none; padding: 1rem; cursor: none; transition: background 0.25s, box-shadow 0.25s; box-shadow: 0 0 24px rgba(147,51,234,0.4); margin-top: 0.5rem; }
+  .modal-btn:hover { background: var(--purple-glow); box-shadow: 0 0 40px rgba(192,132,252,0.5); }
+  .modal-close { position: absolute; top: 1rem; right: 1.2rem; background: none; border: none; color: var(--white-dim); font-size: 1.3rem; cursor: none; transition: color 0.2s; line-height: 1; }
+  .modal-close:hover { color: var(--white); }
+
+  /* ADMIN PANEL BAR (shown when logged in) */
+  #admin-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 700; background: rgba(26,10,46,0.97); border-top: 1px solid rgba(107,33,168,0.5); padding: 1rem 4rem; backdrop-filter: blur(12px); align-items: center; gap: 2rem; }
+  #admin-bar.open { display: flex; }
+  #admin-bar span { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--purple-glow); }
+  .admin-action-btn { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase; background: rgba(147,51,234,0.15); border: 1px solid rgba(147,51,234,0.5); color: var(--purple-glow); padding: 0.5rem 1.2rem; cursor: none; transition: all 0.25s; }
+  .admin-action-btn:hover { background: rgba(147,51,234,0.3); border-color: var(--purple-bright); color: var(--white); }
+  .admin-logout { margin-left: auto; color: rgba(248,244,255,0.3); background: transparent; border: 1px solid rgba(248,244,255,0.12); }
+  .admin-logout:hover { color: #f87171; border-color: #f87171; background: rgba(248,113,113,0.08); }
+
+  /* VIDEO LIGHTBOX */
+  #video-lightbox {
+    display: none; position: fixed; inset: 0; z-index: 7000;
+    background: rgba(5,4,7,0.96); backdrop-filter: blur(16px);
+    align-items: center; justify-content: center;
+    animation: fadeIn 0.3s ease;
+  }
+  #video-lightbox.open { display: flex; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .lightbox-inner {
+    position: relative; width: 90vw; max-width: 1100px;
+    aspect-ratio: 16/9;
+    box-shadow: 0 0 100px rgba(107,33,168,0.5);
+    border: 1px solid rgba(107,33,168,0.4);
+  }
+  .lightbox-inner video {
+    width: 100%; height: 100%; object-fit: contain;
+    background: #000; display: block;
+  }
+  .lightbox-inner iframe {
+    width: 100%; height: 100%; border: none; display: block;
+  }
+  .lightbox-close {
+    position: absolute; top: -2.8rem; right: 0;
+    background: none; border: none; color: var(--white-dim);
+    font-size: 1.5rem; cursor: none; transition: color 0.2s;
+    font-family: 'Space Mono', monospace; letter-spacing: 0.1em;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .lightbox-close:hover { color: var(--white); }
+  .lightbox-title {
+    position: absolute; bottom: -2.8rem; left: 0;
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem;
+    letter-spacing: 0.1em; color: var(--purple-glow);
+  }
+  /* Click-to-play indicator on cards */
+  .video-card { cursor: none; }
+  .video-card .click-hint {
+    position: absolute; bottom: 1rem; right: 1rem;
+    font-family: 'Space Mono', monospace; font-size: 0.55rem;
+    letter-spacing: 0.2em; color: var(--purple-glow);
+    text-transform: uppercase; opacity: 0;
+    transition: opacity 0.3s;
+    background: rgba(5,4,7,0.7); padding: 0.3rem 0.6rem;
+    border: 1px solid rgba(107,33,168,0.4);
+  }
+  .video-card:hover .click-hint { opacity: 1; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    nav { padding: 1.2rem 2rem; }
+    .nav-links { gap: 1.5rem; }
+    .hero { padding: 0 2rem; }
+    .about-grid { grid-template-columns: 1fr; gap: 3rem; }
+    .about-visual { max-width: 100%; }
+    .video-grid { grid-template-columns: 1fr 1fr; }
+    .video-card.featured { grid-column: span 2; grid-row: span 1; }
+    .services-grid { grid-template-columns: 1fr; }
+    #work, #about, #services, #contact { padding-left: 2rem; padding-right: 2rem; }
+    footer { padding: 1.5rem 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- ═══ ADMIN LOGIN MODAL ═══ -->
+<div id="admin-modal" role="dialog" aria-modal="true" aria-label="Admin Login">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-close-btn" title="Close">✕</button>
+    <div class="modal-title">Admin Access</div>
+    <div class="modal-sub">Restricted — Bhuvan Ganesh only</div>
+    <div class="modal-error" id="login-error">Incorrect password. Try again.</div>
+    <div class="modal-field">
+      <label for="admin-pass">Password</label>
+      <input type="password" id="admin-pass" placeholder="Enter admin password" autocomplete="current-password">
+    </div>
+    <button class="modal-btn" id="login-btn">Unlock Admin Panel</button>
+  </div>
+</div>
+
+<!-- ═══ ADMIN BAR (visible only when logged in) ═══ -->
+<div id="admin-bar">
+  <span>🔒 Admin Mode — Bhuvan Ganesh</span>
+  <label for="file-input" class="admin-action-btn upload-label">⬆ Upload Videos</label>
+  <input type="file" id="file-input" accept="video/*" multiple>
+  <button class="admin-action-btn admin-logout" id="logout-btn">Logout</button>
+</div>
+
+<!-- ═══ NAV ═══ -->
+<nav>
+  <div class="nav-logo">Bhuvan Ganesh</div>
+  <ul class="nav-links">
+    <li><a href="#work">Work</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="#services">Services</a></li>
+    <li><a href="#contact">Contact</a></li>
+    <li><button class="admin-nav-btn" id="open-admin-btn" title="Admin Login">⚙</button></li>
+  </ul>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" id="home">
+  <div class="hero-bg"></div>
+  <div class="hero-grid" id="heroGrid"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">Video Editor &amp; Motion Designer</div>
+    <h1 class="hero-title">
+      <span class="line1">BHUVAN</span>
+      <span class="line2">GANESH</span>
+    </h1>
+    <p class="hero-sub">Cinematic stories cut with intention. Every frame breathes life — from raw footage to something unforgettable.</p>
+    <div class="hero-ctas">
+      <a href="#work" class="btn-primary">View My Work</a>
+      <a href="#contact" class="btn-ghost">Let's Collaborate</a>
+    </div>
+  </div>
+  <div class="scroll-hint">Scroll</div>
+</section>
+
+<!-- ═══ WORK ═══ -->
+<section id="work">
+  <div class="work-header fade-up">
+    <div class="section-label"><span></span>Portfolio</div>
+    <h2 class="section-title">SELECTED<br>WORK</h2>
+  </div>
+
+  <div class="video-grid" id="videoGrid">
+
+    <!-- FEATURED — Video 1 -->
+    <div class="video-card featured" id="card-0" data-vimeo="1171843454" data-title="Featured Edit">
+      <iframe src="https://player.vimeo.com/video/1171843454?background=1&autoplay=1&loop=1&muted=1" frameborder="0" allow="autoplay; fullscreen" allowfullscreen tabindex="-1"></iframe>
+      <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="click-hint">Click to play</div>
+      <div class="video-card-overlay">
+        <div class="video-card-tag">Featured Work</div>
+        <div class="video-card-title">Featured Edit</div>
+      </div>
+    </div>
+
+    <!-- Video 2 -->
+    <div class="video-card" id="card-1" data-vimeo="1171844838" data-title="Project 02">
+      <iframe src="https://player.vimeo.com/video/1171844838?background=1&autoplay=1&loop=1&muted=1" frameborder="0" allow="autoplay; fullscreen" allowfullscreen tabindex="-1"></iframe>
+      <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="click-hint">Click to play</div>
+      <div class="video-card-overlay">
+        <div class="video-card-tag">Edit</div>
+        <div class="video-card-title">Project 02</div>
+      </div>
+    </div>
+
+    <!-- Video 3 -->
+    <div class="video-card" id="card-2" data-vimeo="1171845151" data-title="Project 03">
+      <iframe src="https://player.vimeo.com/video/1171845151?background=1&autoplay=1&loop=1&muted=1" frameborder="0" allow="autoplay; fullscreen" allowfullscreen tabindex="-1"></iframe>
+      <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="click-hint">Click to play</div>
+      <div class="video-card-overlay">
+        <div class="video-card-tag">Edit</div>
+        <div class="video-card-title">Project 03</div>
+      </div>
+    </div>
+
+    <!-- Video 4 -->
+    <div class="video-card" id="card-3" data-vimeo="1171845575" data-title="Project 04">
+      <iframe src="https://player.vimeo.com/video/1171845575?background=1&autoplay=1&loop=1&muted=1" frameborder="0" allow="autoplay; fullscreen" allowfullscreen tabindex="-1"></iframe>
+      <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="click-hint">Click to play</div>
+      <div class="video-card-overlay">
+        <div class="video-card-tag">Edit</div>
+        <div class="video-card-title">Project 04</div>
+      </div>
+    </div>
+
+    <!-- Video 5 -->
+    <div class="video-card" id="card-4" data-vimeo="1171845723" data-title="Project 05">
+      <iframe src="https://player.vimeo.com/video/1171845723?background=1&autoplay=1&loop=1&muted=1" frameborder="0" allow="autoplay; fullscreen" allowfullscreen tabindex="-1"></iframe>
+      <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="click-hint">Click to play</div>
+      <div class="video-card-overlay">
+        <div class="video-card-tag">Edit</div>
+        <div class="video-card-title">Project 05</div>
+      </div>
+    </div>
+
+    <!-- Video 6 -->
+    <div class="video-card" id="card-5" data-vimeo="1171846594" data-title="Project 06">
+      <iframe src="https://player.vimeo.com/video/1171846594?background=1&autoplay=1&loop=1&muted=1" frameborder="0" allow="autoplay; fullscreen" allowfullscreen tabindex="-1"></iframe>
+      <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="click-hint">Click to play</div>
+      <div class="video-card-overlay">
+        <div class="video-card-tag">Edit</div>
+        <div class="video-card-title">Project 06</div>
+      </div>
+    </div>
+
+    <!-- Video 7 — spans full row -->
+    <div class="video-card" id="card-6" data-vimeo="1171846866" data-title="Project 07" style="grid-column: span 3;">
+      <iframe src="https://player.vimeo.com/video/1171846866?background=1&autoplay=1&loop=1&muted=1" frameborder="0" allow="autoplay; fullscreen" allowfullscreen tabindex="-1"></iframe>
+      <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="click-hint">Click to play</div>
+      <div class="video-card-overlay">
+        <div class="video-card-tag">Edit</div>
+        <div class="video-card-title">Project 07</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Upload zone: only shown to admin -->
+  <div id="upload-zone">
+    <label for="file-input-zone" class="upload-label">
+      <div class="upload-icon">⬆</div>
+      <p>Drop videos here or <strong>click to browse</strong></p>
+      <p style="margin-top:0.5rem;font-size:0.6rem;opacity:0.5;letter-spacing:0.2em;">MP4 · MOV · WEBM · up to 6 videos</p>
+    </label>
+    <input type="file" id="file-input-zone" accept="video/*" multiple>
+  </div>
+</section>
+
+<!-- ═══ ABOUT ═══ -->
+<section id="about">
+  <div class="about-grid">
+    <div class="about-visual fade-up">
+      <div class="about-visual-inner">
+        <span style="font-size:5rem;filter:drop-shadow(0 0 20px rgba(147,51,234,0.6))">🎬</span>
+      </div>
+    </div>
+    <div class="about-text fade-up">
+      <div class="section-label"><span></span>About Me</div>
+      <h2 class="section-title">THE EDITOR<br>BEHIND THE<br>LENS</h2>
+      <p>I'm Bhuvan Ganesh — a video editor and motion designer who crafts visual stories from raw footage. Shaping emotion, pace, and meaning through every cut.</p>
+      <p>My work spans commercial content, music videos, and independent cinema. Obsessed with the interplay of sound and image, I bring an instinctive rhythm to every project.</p>
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-num">200+</div>
+          <div class="stat-label">Projects</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">6</div>
+          <div class="stat-label">Years</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">40+</div>
+          <div class="stat-label">Clients</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SERVICES ═══ -->
+<section id="services">
+  <div class="fade-up">
+    <div class="section-label"><span></span>What I Do</div>
+    <h2 class="section-title">SERVICES</h2>
+  </div>
+  <div class="services-grid">
+    <div class="service-card fade-up">
+      <div class="service-num">01</div>
+      <div class="service-name">Cinematic Editing</div>
+      <p class="service-desc">Full narrative assembly, color grade, and sound design. Transforming rushes into emotionally resonant films from the very first frame.</p>
+    </div>
+    <div class="service-card fade-up">
+      <div class="service-num">02</div>
+      <div class="service-name">Commercial &amp; Brand</div>
+      <p class="service-desc">Fast-paced, high-impact edits built for brands. Ads, product reels, and campaigns that convert attention into action.</p>
+    </div>
+    <div class="service-card fade-up">
+      <div class="service-num">03</div>
+      <div class="service-name">Motion Graphics</div>
+      <p class="service-desc">Titles, lower-thirds, animated sequences, and visual effects that layer depth and polish onto every frame.</p>
+    </div>
+    <div class="service-card fade-up">
+      <div class="service-num">04</div>
+      <div class="service-name">Social Content</div>
+      <p class="service-desc">Reels, shorts, and vertical content optimized for Instagram, TikTok, and YouTube — built to stop the scroll instantly.</p>
+    </div>
+    <div class="service-card fade-up">
+      <div class="service-num">05</div>
+      <div class="service-name">Music Videos</div>
+      <p class="service-desc">Visual storytelling synced to sound. Creative concepts, storyboarding, and editorial direction from start to screen.</p>
+    </div>
+    <div class="service-card fade-up">
+      <div class="service-num">06</div>
+      <div class="service-name">Color Grading</div>
+      <p class="service-desc">From LUT design to full scene-by-scene grading — creating a signature visual language unique to every project.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CONTACT ═══ -->
+<section id="contact">
+  <div class="contact-inner fade-up">
+    <div class="section-label" style="justify-content:center"><span></span>Get In Touch<span></span></div>
+    <h2 class="section-title">LET'S<br>CREATE</h2>
+    <p>Have a project that needs a sharp editorial eye? I'm available for freelance, collaborations, and long-term creative partnerships.</p>
+    <div class="contact-details">
+      <a href="/cdn-cgi/l/email-protection#ddbfb5a8abbcb3a8b3bbb4b1a9b8afb8b99dbab0bcb4b1f3beb2b0" class="contact-link"><span class="__cf_email__" data-cfemail="accec4d9dacdc2d9c2cac5c0d8c9dec9c8eccbc1cdc5c082cfc3c1">[email&#160;protected]</span></a>
+      <a href="tel:+919121536246" class="contact-link">+91 91215 36246</a>
+    </div>
+    <div class="social-links">
+      <a href="#" class="social-link">Instagram</a>
+      <a href="#" class="social-link">Vimeo</a>
+      <a href="#" class="social-link">YouTube</a>
+      <a href="#" class="social-link">LinkedIn</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ VIDEO LIGHTBOX ═══ -->
+<div id="video-lightbox">
+  <div class="lightbox-inner">
+    <iframe id="lightbox-iframe" src="" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+    <button class="lightbox-close" id="lightbox-close">✕ Close</button>
+    <div class="lightbox-title" id="lightbox-title"></div>
+  </div>
+</div>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <span>© 2026 Bhuvan Ganesh — All Rights Reserved</span>
+  <div class="footer-dot"></div>
+  <span>Made with obsession</span>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  // ── Cursor ──
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursorRing');
+  let mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',e=>{ mx=e.clientX; my=e.clientY; cursor.style.left=mx+'px'; cursor.style.top=my+'px'; });
+  (function ar(){ rx+=(mx-rx)*0.12; ry+=(my-ry)*0.12; ring.style.left=rx+'px'; ring.style.top=ry+'px'; requestAnimationFrame(ar); })();
+  document.querySelectorAll('a,button,.video-card,.service-card,label').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{ cursor.style.transform='translate(-50%,-50%) scale(2.5)'; ring.style.width='60px'; ring.style.height='60px'; ring.style.opacity='0.3'; });
+    el.addEventListener('mouseleave',()=>{ cursor.style.transform='translate(-50%,-50%) scale(1)'; ring.style.width='38px'; ring.style.height='38px'; ring.style.opacity='1'; });
+  });
+
+  // ── Scroll Reveal ──
+  const obs = new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); }),{threshold:0.12});
+  document.querySelectorAll('.fade-up').forEach(el=>obs.observe(el));
+
+  // ── Hero Parallax ──
+  document.addEventListener('mousemove',e=>{
+    const x=(e.clientX/window.innerWidth-0.5)*18;
+    const y=(e.clientY/window.innerHeight-0.5)*18;
+    document.getElementById('heroGrid').style.transform=`translate(${x}px,${y}px)`;
+  });
+
+  // ══════════════════════════════
+  // VIDEO LIGHTBOX (Vimeo click-to-play)
+  // ══════════════════════════════
+  const lightbox       = document.getElementById('video-lightbox');
+  const lightboxIframe = document.getElementById('lightbox-iframe');
+  const lightboxTitle  = document.getElementById('lightbox-title');
+  const lightboxClose  = document.getElementById('lightbox-close');
+
+  function openLightbox(vimeoId, title) {
+    lightboxIframe.src = `https://player.vimeo.com/video/${vimeoId}?autoplay=1&color=9333ea&title=0&byline=0&portrait=0`;
+    lightboxTitle.textContent = title;
+    lightbox.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    lightbox.classList.remove('open');
+    lightboxIframe.src = '';
+    document.body.style.overflow = '';
+  }
+
+  lightboxClose.addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', e => { if(e.target === lightbox) closeLightbox(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') closeLightbox(); });
+
+  // Attach click-to-play to all Vimeo cards
+  document.querySelectorAll('.video-card[data-vimeo]').forEach(card => {
+    card.addEventListener('click', () => {
+      const id    = card.getAttribute('data-vimeo');
+      const title = card.getAttribute('data-title');
+      openLightbox(id, title);
+    });
+  });
+
+  // ══════════════════════════════
+  // ADMIN SYSTEM
+  // ══════════════════════════════
+  const ADMIN_PASSWORD = 'bhuvan2024';
+
+  const adminModal    = document.getElementById('admin-modal');
+  const adminBar      = document.getElementById('admin-bar');
+  const openAdminBtn  = document.getElementById('open-admin-btn');
+  const modalCloseBtn = document.getElementById('modal-close-btn');
+  const loginBtn      = document.getElementById('login-btn');
+  const logoutBtn     = document.getElementById('logout-btn');
+  const passInput     = document.getElementById('admin-pass');
+  const loginError    = document.getElementById('login-error');
+  const uploadZone    = document.getElementById('upload-zone');
+
+  let isAdmin = false;
+
+  openAdminBtn.addEventListener('click',()=>{
+    if(isAdmin){ showAdminBar(); return; }
+    adminModal.classList.add('open');
+    passInput.value=''; loginError.classList.remove('show');
+    setTimeout(()=>passInput.focus(),100);
+  });
+
+  modalCloseBtn.addEventListener('click',()=>adminModal.classList.remove('open'));
+  adminModal.addEventListener('click',e=>{ if(e.target===adminModal) adminModal.classList.remove('open'); });
+  passInput.addEventListener('keydown',e=>{ if(e.key==='Enter') attemptLogin(); });
+  loginBtn.addEventListener('click',attemptLogin);
+
+  function attemptLogin(){
+    if(passInput.value===ADMIN_PASSWORD){
+      isAdmin=true;
+      adminModal.classList.remove('open');
+      showAdminBar();
+    } else {
+      loginError.classList.add('show');
+      passInput.value='';
+      passInput.focus();
+    }
+  }
+
+  function showAdminBar(){
+    adminBar.classList.add('open');
+    uploadZone.classList.add('active');
+    document.body.style.paddingBottom='70px';
+  }
+
+  logoutBtn.addEventListener('click',()=>{
+    isAdmin=false;
+    adminBar.classList.remove('open');
+    uploadZone.classList.remove('active');
+    document.body.style.paddingBottom='';
+  });
+
+  // ── Video Upload (admin only) ──
+  function bindFileInput(el){ if(el) el.addEventListener('change', e => handleFiles(e.target.files)); }
+  bindFileInput(document.getElementById('file-input'));
+  bindFileInput(document.getElementById('file-input-zone'));
+
+  uploadZone.addEventListener('dragover',e=>{ e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop',e=>{ e.preventDefault(); uploadZone.classList.remove('drag-over'); });
+
+  function handleFiles(files){ console.log('Videos now served via Vimeo embed.', files); }
+
+</script>
+</body>
+</html>
